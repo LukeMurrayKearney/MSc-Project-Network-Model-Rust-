@@ -7,7 +7,7 @@ use self::random_choice::random_choice;
 pub struct Network {
     pub adjacency_matrix: DMatrix<f64>,
     pub degree: DVector<f64>,
-    pub parameters: DVector<f64>,
+    pub nodal_states: DVector<f64>,
 }
 
 impl Network {
@@ -34,7 +34,7 @@ impl Network {
         Network {
             adjacency_matrix: matrix,
             degree: DVector::from_vec(degrees),
-            parameters: DVector::zeros(0)
+            nodal_states: DVector::zeros(degrees.len())
         }
     }
 }
