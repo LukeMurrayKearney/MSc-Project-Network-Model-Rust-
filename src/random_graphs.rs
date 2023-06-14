@@ -34,7 +34,7 @@ impl Network {
         Network {
             adjacency_matrix: matrix,
             degree: DVector::from_vec(degrees),
-            nodal_states: DVector::zeros(degrees.len())
+            nodal_states: DVector::zeros(n)
         }
     }
 }
