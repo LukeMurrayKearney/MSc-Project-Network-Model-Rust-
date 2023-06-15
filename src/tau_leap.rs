@@ -9,8 +9,11 @@ use self::random_choice::random_choice;
  
 pub fn run_tau_leap(network:&mut Network, parameters: &Vec<f64>, maxtime: f64, dt: f64) {
     let mut rng = rand::thread_rng();
-    for _ in 0..((maxtime/dt) as usize) {
+    for i in 0..((maxtime/dt) as usize) {
         step_tau_leap(network, parameters, dt, &mut rng);
+        if i % 100 == 0 {
+            println!("{i}");
+        }
     }
 }
 
@@ -58,8 +61,12 @@ fn poisson_rvs(rates: Vec<f64>, dt: f64, rng: &mut ThreadRng) -> Vec<usize> {
     // create a random number generator, and generate poisson distributed random numbers with a given rate
     let mut result: Vec<usize> = Vec::new(); 
     for lambda in rates.iter() {
-        let poi = Poisson::new(*lambda * dt).unwrap();
-        result.push(poi.sample(rng) as usize);
+        if *lambda > std::f64::EPSILON {
+            let poi = Poisson::new(*lambda * dt).unwrap();
+            result.push(poi.sample(rng) as usize);
+        } else {
+            result.push(0)
+        }
     }
     result
 }
