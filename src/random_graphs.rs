@@ -49,7 +49,7 @@ impl Network {
             adjacency_matrix: matrix,
             degree: DVector::from_vec(degrees),
             nodal_states: vec![State::Susceptible; n],
-            results: vec![vec![n, 0, 0, 0]]
+            results: Vec::new()
         }
     }
 
@@ -71,6 +71,7 @@ impl Network {
         for i in 0..number_of_infecteds {
             self.nodal_states[indices[i]] = State::Infected
         }
+        self.results.push(self.count_states());
     }
 
     pub fn count_states(&self) -> Vec<usize> {
