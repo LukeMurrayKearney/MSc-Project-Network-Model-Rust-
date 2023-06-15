@@ -22,6 +22,10 @@ pub struct Network {
 
 impl Network {
     pub fn new_ba(n: usize, m0: usize, m: usize) -> Network {
+        //check dimensions correct
+        if m0 < m {
+            println!("m0 must be greater than m");
+        }
         // start with complete graph
         let mut matrix = DMatrix::from_fn(n, n,
             |r, c| if (m0 > r) & (m0 > c) { 1.0 } else {0.0});
@@ -61,6 +65,7 @@ impl Network {
         };
         // define random number generator
         let mut rng = rand::thread_rng();
+        // shuffle indices and choose
         let mut indices: Vec<usize> = (0..self.nodal_states.len()).collect();
         indices.shuffle(&mut rng);
         for i in 0..number_of_infecteds {
