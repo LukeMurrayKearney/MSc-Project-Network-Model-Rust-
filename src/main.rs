@@ -1,6 +1,7 @@
 use networks::random_graphs::*;
+use networks::tau_leap::*;
 extern crate nalgebra as na;
-// use na::{DMatrix, DVector};
+use na::{DMatrix, DVector};
 
 pub(crate) fn main() {
     // define network with an initial infection
@@ -12,5 +13,6 @@ pub(crate) fn main() {
     // run SIR on network
     
     println!("{:?}, \n {:?}", network.nodal_states, network.count_states());
+    run_tau_leap(&mut network, &vec![0.1,0.1], 1.0, 1.0);
 }
 
