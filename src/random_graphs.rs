@@ -1,5 +1,6 @@
 extern crate nalgebra as na;
-use na::{DMatrix, DVector};
+use na::{DVector};
+use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 extern crate random_choice;
 use self::random_choice::random_choice;
 use rand::prelude::*;
@@ -7,14 +8,14 @@ use rand::prelude::*;
 #[derive(Clone,Debug)]
 pub enum State {
     Susceptible,
-    Exposed,
     Infected,
     Recovered
 }
 
 #[derive(Debug)]
 pub struct Network {
-    pub adjacency_matrix: DMatrix<f64>,
+    // pub adjacency_matrix: DMatrix<f64>,
+    pub adjacency_matrix: CsrMatrix<f64>,
     pub degree: DVector<f64>,
     pub nodal_states: Vec<State>,
     pub results: Vec<Vec<usize>>
@@ -26,10 +27,15 @@ impl Network {
         if m0 < m {
             println!("m0 must be greater than m");
         }
-        // start with complete graph
-        let mut matrix = DMatrix::from_fn(n, n,
-            |r, c| if (m0 > r) & (m0 > c) { 1.0 } else {0.0});
+        // start with complete sparse graph,
+        let mut coo_mat:CooMatrix<f64> = CooMatrix::new(n,n);
         let mut degrees: Vec<f64> = vec![0.0;n];
+
+        for i in 0..m0 {
+            for j in 0..m0 {
+                coo_mat.push(i,j, 1.0);
+            }
+        }
         for i in 0..m0 {
             degrees[i] += 1.0
         }
@@ -38,12 +44,13 @@ impl Network {
         for i in m0..n {
             let choices = random_choice().random_choice_f64(&nodes, &degrees, m);
             for j in choices.into_iter() {
-                matrix[(i,*j)] += 1.0;
-                matrix[(*j,i)] += 1.0;
+                coo_mat.push(i, *j, 1.0);
+                coo_mat.push(*j, i, 1.0);
                 degrees[i] += 1.0;
                 degrees[*j] += 1.0;
             }
         }
+        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
         // result network struct with adjacency matrix
         Network {
             adjacency_matrix: matrix,
@@ -75,13 +82,12 @@ impl Network {
     }
 
     pub fn count_states(&self) -> Vec<usize> {
-        let mut result: Vec<usize> = vec![0; 4];
+        let mut result: Vec<usize> = vec![0; 3];
         for state in self.nodal_states.iter() {
             match state {
                 State::Susceptible => result[0] += 1,
-                State::Exposed => result[1] += 1,
-                State::Infected => result[2] += 1,
-                State::Recovered => result[3] += 1
+                State::Infected => result[1] += 1,
+                State::Recovered => result[2] += 1
             }
         }
         result
