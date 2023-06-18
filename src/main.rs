@@ -12,7 +12,7 @@ pub(crate) fn main() {
     
     // run SIR on network and time it 
     let start = std::time::Instant::now();
-    run_tau_leap(&mut network, &vec![0.03,0.1], 5.0*365.0, 1.0);
+    run_tau_leap(&mut network, &vec![0.1,0.1], 5.0*365.0, 1.0);
     let elapsed = start.elapsed();
     println!("{} seconds", elapsed.as_secs());
     outbreak_results_csv(network);

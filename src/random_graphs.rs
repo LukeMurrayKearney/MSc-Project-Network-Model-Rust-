@@ -14,7 +14,6 @@ pub enum State {
 
 #[derive(Debug)]
 pub struct Network {
-    // pub adjacency_matrix: DMatrix<f64>,
     pub adjacency_matrix: CsrMatrix<f64>,
     pub degree: DVector<f64>,
     pub nodal_states: Vec<State>,
