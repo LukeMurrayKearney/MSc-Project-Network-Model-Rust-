@@ -7,14 +7,16 @@ pub(crate) fn main() {
     // define network with an initial infection
     let n: usize = 100_000;
     let initially_infected: f64 = 0.001;
-    let mut network:Network = Network::new_ba(n,5,2);
-    network.initialize_infection(initially_infected);
+    let network_structure: NetworkStructure = NetworkStructure::new_ba(n,5,2);
+    let mut network_properties: NetworkProperties = NetworkProperties::new(&network_structure);
+    network_properties.initialize_infection(initially_infected);
+    network_properties.params(0.1,0.2);
     
     // run SIR on network and time it 
     let start = std::time::Instant::now();
-    run_tau_leap(&mut network, &vec![0.1,0.1], 5.0*365.0, 1.0);
+    let sir_results: Output = run_tau_leap(&network_structure, &mut network_properties, 5.0*365.0, 1.0);
     let elapsed = start.elapsed();
     println!("{} seconds", elapsed.as_secs());
-    outbreak_results_csv(network);
+    outbreak_results_csv(sir_results, network_properties.result_type);
 }
 
