@@ -1,3 +1,5 @@
+// use std::thread::Result;
+use std::sync::{Arc, Mutex};
 use crate::random_graphs::*;
 extern crate nalgebra as na;
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
@@ -5,18 +7,39 @@ use rand::{seq::{SliceRandom}, rngs::ThreadRng};
 use rand_distr::{Poisson,Distribution};
 extern crate random_choice;
 use self::random_choice::random_choice;
+use rayon::prelude::*;
 
-// pub fn run_tau_parallel(network: &mut NetworkStructure, parameters: &Vec<f64>, maxtime: f64, dt: f64) -> Output {
-
-// }
-
-pub fn run_tau_leap(network_structure: &NetworkStructure, network_properties: &mut NetworkProperties, maxtime: f64, dt: f64) -> Output {
-    let mut rng = rand::thread_rng();
-    for i in 0..((maxtime/dt) as usize) {
-        step_tau_leap(&network_structure, network_properties, dt, &mut rng);
-        if i % 10 == 0 {
-            println!("{i}");
+pub fn run_tau_parallel(network_structure: &NetworkStructure, network_properties: &NetworkProperties, maxtime: f64, dt: f64, initially_infected: f64) -> Output {
+    let iterations: Vec<usize> = match network_properties.result_type {
+        ResultType::SIR => vec![0],
+        ResultType::AvgInfections(iters) => (0..iters).collect()
+    };
+    let output = Arc::new(Mutex::new(Output::new()));
+    iterations.par_iter().for_each(|i| {
+        let tmp = run_tau_leap(network_structure, &mut network_properties.clone(), maxtime, dt, initially_infected);
+        match network_properties.result_type {
+            ResultType::SIR => {
+                let mut output = output.lock().unwrap();
+                output.sir = tmp.sir;
+            },
+            ResultType::AvgInfections(_) => {
+                let mut output = output.lock().unwrap();
+                output.infections.push(tmp.infections[0].clone());
+            }
         }
+        println!("{i}");
+    });
+    Arc::try_unwrap(output).unwrap().into_inner().unwrap() // Unwrap the `Mutex` and return the `Output`
+}
+
+pub fn run_tau_leap(network_structure: &NetworkStructure, network_properties: &mut NetworkProperties, maxtime: f64, dt: f64, initially_infected: f64) -> Output {
+    network_properties.initialize_infection(initially_infected);
+    let mut rng = rand::thread_rng();
+    for _i in 0..((maxtime/dt) as usize) {
+        step_tau_leap(&network_structure, network_properties, dt, &mut rng);
+        // if i % 100 == 0 {
+        //     println!("{i}");
+        // }
         if network_properties.results.last().unwrap()[1] == 0 {
             break;
         }
@@ -121,13 +144,18 @@ fn update_compartments(network_properties: &mut NetworkProperties, num: Vec<usiz
     }
 
     // Repeat for recovery events
-    if num[1] < network_properties.results.last().unwrap()[1] {
+    if num[1] < network_properties.results.last().unwrap()[1] + x {
         x = num[1];
     } else {
-        x = network_properties.results.last().unwrap()[1];
+        x += network_properties.results.last().unwrap()[1];
     }
     let mut indices: Vec<usize> = infecteds.col_indices().to_owned();
+    // add new infection events to selection
+    for i in choices.into_iter() {
+        indices.push(*i)
+    }
     indices.shuffle(rng);
+    //choose people to recover
     for i in 0..x {
         network_properties.nodal_states[indices[i]] = State::Recovered;
     }

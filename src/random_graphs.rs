@@ -4,6 +4,7 @@ use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 extern crate random_choice;
 use self::random_choice::random_choice;
 use rand::prelude::*;
+use serde::Serialize;
 
 #[derive(Clone,Debug)]
 pub enum State {
@@ -12,7 +13,7 @@ pub enum State {
     Recovered
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub enum ResultType {
     SIR,
     AvgInfections(usize)
@@ -24,6 +25,7 @@ pub struct NetworkStructure {
     pub degree: DVector<f64>
 }
 
+#[derive(Clone)]
 pub struct NetworkProperties {
     pub nodal_states: Vec<State>,
     pub results: Vec<Vec<usize>>,
@@ -31,7 +33,7 @@ pub struct NetworkProperties {
     pub parameters: Vec<f64>
 }
 
-#[derive(Debug)]
+#[derive(Debug,Serialize)]
 pub struct Output {
     pub sir: Vec<Vec<usize>>,
     pub infections: Vec<Vec<usize>>
