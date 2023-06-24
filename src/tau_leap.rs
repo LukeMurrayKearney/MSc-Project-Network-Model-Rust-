@@ -80,22 +80,22 @@ fn step_tau_leap(network_structure: &NetworkStructure, network_properties: &mut 
         }
     } 
     // calculate rates and poisson samples
-    let rates: (Vec<f64>, f64) = calculate_rates(network_structure, network_properties, &sir_coo.1, &sir_coo.0);
-    let total_rate: Vec<f64> = vec![rates.0.iter().sum(), rates.1];
+    let rates: (Vec<f64>, f64, f64) = calculate_rates(network_structure, network_properties, &sir_coo);
+    let total_rate: Vec<f64> = vec![rates.0.iter().sum(), rates.1, rates.2];
     let num_events: Vec<usize> = poisson_rvs(total_rate, dt, rng);
-    update_compartments(network_properties, num_events, sir_coo.0, sir_coo.1, rates.0, rng);
+    update_compartments(network_properties, num_events, &sir_coo, rates.0, rng);
     network_properties.results.push(network_properties.count_states());
 }
 
-fn calculate_rates(network_structure: &NetworkStructure, network_properties: &mut NetworkProperties, infecteds_coo: &CooMatrix<f64>, susceptibles_coo: &CooMatrix<f64>) -> (Vec<f64>, f64) {
+fn calculate_rates(network_structure: &NetworkStructure, network_properties: &mut NetworkProperties, sir_coo: &(CooMatrix<f64>,CooMatrix<f64>,CooMatrix<f64>)) -> (Vec<f64>, f64, f64) {
     // rates of each occurence 
-    let infecteds: CsrMatrix<f64> = CsrMatrix::from(infecteds_coo);
+    let infecteds: CsrMatrix<f64> = CsrMatrix::from(&sir_coo.1);
     let ds_vec = network_properties.parameters[0] * (infecteds.clone() * network_structure.adjacency_matrix.clone());
     let total_infecteds: f64 = infecteds.values().iter().sum();
     let di = network_properties.parameters[1] * total_infecteds;
     //must find common indices to apply rates to the susceptible individuals only
     let indices_infection_rate: Vec<usize> = ds_vec.col_indices().to_owned();
-    let indices_susceptibles: Vec<usize> = susceptibles_coo.col_indices().to_owned();
+    let indices_susceptibles: Vec<usize> = sir_coo.0.col_indices().to_owned();
     let common_indices: Vec<usize> = indices_infection_rate
         .iter()
         .enumerate()
@@ -108,7 +108,9 @@ fn calculate_rates(network_structure: &NetworkStructure, network_properties: &mu
         ds.push(ds_vec.values()[*index]); 
         
     }
-    (ds,di)
+    let total_recovereds: f64 = sir_coo.2.values().iter().sum();
+    let dr: f64 = network_properties.parameters[2] * total_recovereds;
+    (ds,di,dr)
 }
 
 fn poisson_rvs(rates: Vec<f64>, dt: f64, rng: &mut ThreadRng) -> Vec<usize> {
@@ -125,7 +127,7 @@ fn poisson_rvs(rates: Vec<f64>, dt: f64, rng: &mut ThreadRng) -> Vec<usize> {
     result
 }
 
-fn update_compartments(network_properties: &mut NetworkProperties, num: Vec<usize>, susceptibles: CooMatrix<f64>, infecteds: CooMatrix<f64>, 
+fn update_compartments(network_properties: &mut NetworkProperties, num: Vec<usize>, sir_coo: &(CooMatrix<f64>,CooMatrix<f64>,CooMatrix<f64>), 
     infection_pressure: Vec<f64>, rng: &mut ThreadRng) {
 
     let mut x: usize;
@@ -136,10 +138,10 @@ fn update_compartments(network_properties: &mut NetworkProperties, num: Vec<usiz
         x = network_properties.results.last().unwrap()[0];
     }
     // get susceptible indices
-    let indices: Vec<usize> = susceptibles.col_indices().to_owned();
+    let indices: Vec<usize> = sir_coo.0.col_indices().to_owned();
     // chooose people to infect and update
-    let choices: Vec<&usize> = random_choice().random_choice_f64(&indices, &infection_pressure, x);
-    for i in choices.iter() {
+    let infec_idx: Vec<&usize> = random_choice().random_choice_f64(&indices, &infection_pressure, x);
+    for i in infec_idx.iter() {
         network_properties.nodal_states[**i] = State::Infected;
     }
 
@@ -149,14 +151,37 @@ fn update_compartments(network_properties: &mut NetworkProperties, num: Vec<usiz
     } else {
         x += network_properties.results.last().unwrap()[1];
     }
-    let mut indices: Vec<usize> = infecteds.col_indices().to_owned();
+    let mut indices: Vec<usize> = sir_coo.1.col_indices().to_owned();
     // add new infection events to selection
-    for i in choices.into_iter() {
+    for i in infec_idx.into_iter() {
         indices.push(*i)
+    }
+    indices.shuffle(rng);
+    let recov_idx: Vec<usize> = indices
+        .iter()
+        .enumerate()
+        .filter(|(i,_)| i < &x)
+        .map(|(i, _)| i)
+        .collect();
+    //choose people to recover
+    for i in recov_idx.iter() {
+        network_properties.nodal_states[indices[*i]] = State::Recovered;
+    }
+
+    // Repeat for resusceptible events
+    if num[2] < network_properties.results.last().unwrap()[2] + x {
+        x = num[2];
+    } else {
+        x += network_properties.results.last().unwrap()[2];
+    }
+    let mut indices: Vec<usize> = sir_coo.2.col_indices().to_owned();
+    // add new infection events to selection
+    for i in recov_idx.into_iter() {
+        indices.push(i)
     }
     indices.shuffle(rng);
     //choose people to recover
     for i in 0..x {
-        network_properties.nodal_states[indices[i]] = State::Recovered;
+        network_properties.nodal_states[indices[i]] = State::Susceptible;
     }
 }

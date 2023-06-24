@@ -19,6 +19,12 @@ pub enum ResultType {
     AvgInfections(usize)
 }
 
+#[derive(Clone)]
+pub enum OutbreakType {
+    SIR,
+    SIRS
+}
+
 #[derive(Debug)]
 pub struct NetworkStructure {
     pub adjacency_matrix: CsrMatrix<f64>,
@@ -30,6 +36,7 @@ pub struct NetworkProperties {
     pub nodal_states: Vec<State>,
     pub results: Vec<Vec<usize>>,
     pub result_type: ResultType,
+    pub outbreak_type: OutbreakType,
     pub parameters: Vec<f64>
 }
 
@@ -84,12 +91,25 @@ impl NetworkProperties {
             nodal_states: vec![State::Susceptible; network.degree.len()],
             results: Vec::new(),
             result_type: ResultType::SIR,
+            outbreak_type: OutbreakType::SIR,
             parameters: vec![0.1,0.2]
         }
     }
 
-    pub fn params(&mut self, beta: f64, gamma: f64) {
-        self.parameters = vec![beta,gamma];
+    pub fn params(&mut self, params: Vec<f64>) {
+        match params.len() {
+            2 => {
+                self.parameters = params;
+                self.outbreak_type = OutbreakType::SIR;
+            }
+            3 => {
+                self.parameters = params;
+                self.outbreak_type = OutbreakType::SIRS;
+            }
+            _ => {
+                println!("Enter a vector of 2/3 parameters")
+            }
+        }
     }
 
     pub fn initialize_infection(&mut self, proportion_of_population: f64) {
