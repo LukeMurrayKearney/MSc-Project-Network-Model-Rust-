@@ -1,5 +1,3 @@
-// use std::thread::Result;
-use std::sync::{Arc, Mutex};
 use crate::random_graphs::*;
 extern crate nalgebra as na;
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
@@ -7,6 +5,7 @@ use rand::{seq::{SliceRandom}, rngs::ThreadRng};
 use rand_distr::{Poisson,Distribution};
 extern crate random_choice;
 use self::random_choice::random_choice;
+use std::sync::{Arc, Mutex};
 use rayon::prelude::*;
 
 pub fn run_tau_parallel(network_structure: &NetworkStructure, network_properties: &NetworkProperties, maxtime: f64, dt: f64, initially_infected: f64) -> Output {

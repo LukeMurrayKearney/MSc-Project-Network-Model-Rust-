@@ -1,10 +1,10 @@
 extern crate nalgebra as na;
-use na::{DVector};
-use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
+use std::vec;
+use nalgebra_sparse::{coo::{CooMatrix}, csr::CsrMatrix};
 extern crate random_choice;
 use self::random_choice::random_choice;
 use rand::prelude::*;
-use serde::Serialize;
+use serde::{Serialize};
 
 #[derive(Clone,Debug)]
 pub enum State {
@@ -28,7 +28,8 @@ pub enum OutbreakType {
 #[derive(Debug)]
 pub struct NetworkStructure {
     pub adjacency_matrix: CsrMatrix<f64>,
-    pub degree: DVector<f64>
+    pub degree: Vec<f64>,
+    pub age_brackets: Vec<usize>
 }
 
 #[derive(Clone)]
@@ -58,6 +59,7 @@ impl NetworkStructure {
         let mut coo_mat:CooMatrix<f64> = CooMatrix::new(n,n);
         let mut degrees: Vec<f64> = vec![0.0;n];
 
+        // make complete starting graph
         for i in 0..m0 {
             for j in 0..m0 {
                 coo_mat.push(i,j, 1.0);
@@ -81,11 +83,60 @@ impl NetworkStructure {
         // result network struct with adjacency matrix
         NetworkStructure {
             adjacency_matrix: matrix,
-            degree: DVector::from_vec(degrees),
+            degree: degrees,
+            age_brackets: Vec::new()
         }
     }
 
-    
+    pub fn new_sbm(n: usize, partitions: Vec<usize>, rates_mat: Vec<Vec<f64>>) -> NetworkStructure {
+
+        let mut rng: ThreadRng = rand::thread_rng();
+        let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
+        let mut degrees: Vec<f64> = vec![0.0;n];
+
+        // loop through partitions and then individuals
+        let mut last_idx: [usize;2] = [0,0];
+        let mut rand_num: f64 = rng.gen();
+        // copy partitions to use in column iterations, to only look upper triangular
+        let mut tmp_partitions: Vec<usize> = partitions.clone();
+
+        for (part_i, x) in partitions.iter().enumerate() {
+            for i in last_idx[0]..*x {
+                last_idx[1] = 0;
+                for (part_j, y) in tmp_partitions.iter().enumerate() {
+                    for j in last_idx[1]..*y {
+                        if rand_num < rates_mat[part_i][part_j] {
+                            coo_mat.push(i, j, 1.0);
+                            coo_mat.push(j, i, 1.0);
+                            degrees[i] += 1.0;
+                            degrees[j] += 1.0;
+                        }
+                        rand_num = rng.gen();
+                    }
+                }
+            }
+            tmp_partitions.remove(0);
+        }
+        
+        // define ages from partitioning and adjacency matrix as Csr mat
+        let ages: Vec<usize> = partitions  
+            .iter()
+            .enumerate()
+            .flat_map(|(i,x)| {
+                vec![i; *x]
+            })
+            .collect();
+        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
+
+        // ensure ages and degree length is consistent
+        assert_eq!(ages.len(), degrees.len()); 
+
+        NetworkStructure {
+            adjacency_matrix: matrix,
+            degree: degrees,
+            age_brackets: ages
+        }
+    }
 }
 
 impl NetworkProperties {
