@@ -4,6 +4,7 @@ use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 extern crate random_choice;
 use self::random_choice::random_choice;
 use rand::prelude::*;
+use serde::Serialize;
 
 #[derive(Clone,Debug)]
 pub enum State {
@@ -12,16 +13,43 @@ pub enum State {
     Recovered
 }
 
-#[derive(Debug)]
-pub struct Network {
-    pub adjacency_matrix: CsrMatrix<f64>,
-    pub degree: DVector<f64>,
-    pub nodal_states: Vec<State>,
-    pub results: Vec<Vec<usize>>
+#[derive(Clone)]
+pub enum ResultType {
+    SIR,
+    AvgInfections(usize)
 }
 
-impl Network {
-    pub fn new_ba(n: usize, m0: usize, m: usize) -> Network {
+#[derive(Clone)]
+pub enum OutbreakType {
+    SIR,
+    SIRS
+}
+
+#[derive(Debug)]
+pub struct NetworkStructure {
+    pub adjacency_matrix: CsrMatrix<f64>,
+    pub degree: DVector<f64>
+}
+
+#[derive(Clone)]
+pub struct NetworkProperties {
+    pub nodal_states: Vec<State>,
+    pub results: Vec<Vec<usize>>,
+    pub result_type: ResultType,
+    pub outbreak_type: OutbreakType,
+    pub parameters: Vec<f64>
+}
+
+#[derive(Debug,Serialize)]
+pub struct Output {
+    pub sir: Vec<Vec<usize>>,
+    pub infections: Vec<Vec<usize>>
+}
+
+
+impl NetworkStructure {
+
+    pub fn new_ba(n: usize, m0: usize, m: usize) -> NetworkStructure {
         //check dimensions correct
         if m0 < m {
             println!("m0 must be greater than m");
@@ -51,11 +79,40 @@ impl Network {
         }
         let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
         // result network struct with adjacency matrix
-        Network {
+        NetworkStructure {
             adjacency_matrix: matrix,
             degree: DVector::from_vec(degrees),
-            nodal_states: vec![State::Susceptible; n],
-            results: Vec::new()
+        }
+    }
+
+    
+}
+
+impl NetworkProperties {
+
+    pub fn new(network: &NetworkStructure) -> NetworkProperties {
+        NetworkProperties { 
+            nodal_states: vec![State::Susceptible; network.degree.len()],
+            results: Vec::new(),
+            result_type: ResultType::SIR,
+            outbreak_type: OutbreakType::SIR,
+            parameters: vec![0.1,0.2]
+        }
+    }
+
+    pub fn params(&mut self, params: Vec<f64>) {
+        match params.len() {
+            2 => {
+                self.parameters = params;
+                self.outbreak_type = OutbreakType::SIR;
+            }
+            3 => {
+                self.parameters = params;
+                self.outbreak_type = OutbreakType::SIRS;
+            }
+            _ => {
+                println!("Enter a vector of 2/3 parameters")
+            }
         }
     }
 
@@ -90,5 +147,11 @@ impl Network {
             }
         }
         result
+    }
+}
+
+impl Output {
+    pub fn new() -> Output {
+        Output { sir: Vec::new(), infections: Vec::new() }
     }
 }
