@@ -97,10 +97,13 @@ impl NetworkStructure {
         // loop through partitions and then individuals
         let mut last_idx: [usize;2] = [0,0];
         let mut rand_num: f64 = rng.gen();
+        // copy partitions to use in column iterations, to only look upper triangular
+        let mut tmp_partitions: Vec<usize> = partitions.clone();
+
         for (part_i, x) in partitions.iter().enumerate() {
             for i in last_idx[0]..*x {
                 last_idx[1] = 0;
-                for (part_j, y) in partitions.iter().enumerate() {
+                for (part_j, y) in tmp_partitions.iter().enumerate() {
                     for j in last_idx[1]..*y {
                         if rand_num < rates_mat[part_i][part_j] {
                             coo_mat.push(i, j, 1.0);
@@ -112,6 +115,7 @@ impl NetworkStructure {
                     }
                 }
             }
+            tmp_partitions.remove(0);
         }
         
         // define ages from partitioning and adjacency matrix as Csr mat
