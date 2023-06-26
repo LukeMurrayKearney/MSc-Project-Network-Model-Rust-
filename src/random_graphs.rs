@@ -48,6 +48,7 @@ pub struct Output {
 
 
 impl NetworkStructure {
+
     pub fn new_ba(n: usize, m0: usize, m: usize) -> NetworkStructure {
         //check dimensions correct
         if m0 < m {
@@ -83,9 +84,12 @@ impl NetworkStructure {
             degree: DVector::from_vec(degrees),
         }
     }
+
+    
 }
 
 impl NetworkProperties {
+
     pub fn new(network: &NetworkStructure) -> NetworkProperties {
         NetworkProperties { 
             nodal_states: vec![State::Susceptible; network.degree.len()],

@@ -109,7 +109,10 @@ fn calculate_rates(network_structure: &NetworkStructure, network_properties: &mu
         
     }
     let total_recovereds: f64 = sir_coo.2.values().iter().sum();
-    let dr: f64 = network_properties.parameters[2] * total_recovereds;
+    let dr: f64 = match network_properties.outbreak_type {
+        OutbreakType::SIRS => network_properties.parameters[2] * total_recovereds,
+        OutbreakType::SIR => 0.0
+    };
     (ds,di,dr)
 }
 
@@ -169,19 +172,24 @@ fn update_compartments(network_properties: &mut NetworkProperties, num: Vec<usiz
     }
 
     // Repeat for resusceptible events
-    if num[2] < network_properties.results.last().unwrap()[2] + x {
-        x = num[2];
-    } else {
-        x += network_properties.results.last().unwrap()[2];
-    }
-    let mut indices: Vec<usize> = sir_coo.2.col_indices().to_owned();
-    // add new infection events to selection
-    for i in recov_idx.into_iter() {
-        indices.push(i)
-    }
-    indices.shuffle(rng);
-    //choose people to recover
-    for i in 0..x {
-        network_properties.nodal_states[indices[i]] = State::Susceptible;
+    match network_properties.outbreak_type {
+        OutbreakType::SIRS => {
+            if num[2] < network_properties.results.last().unwrap()[2] + x {
+                x = num[2];
+            } else {
+                x += network_properties.results.last().unwrap()[2];
+            }
+            let mut indices: Vec<usize> = sir_coo.2.col_indices().to_owned();
+            // add new infection events to selection
+            for i in recov_idx.into_iter() {
+                indices.push(i)
+            }
+            indices.shuffle(rng);
+            //choose people to recover
+            for i in 0..x {
+                network_properties.nodal_states[indices[i]] = State::Susceptible;
+            }
+        }
+        OutbreakType::SIR => ()
     }
 }
