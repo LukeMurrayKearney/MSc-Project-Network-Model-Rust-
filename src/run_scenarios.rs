@@ -40,3 +40,12 @@ pub fn test_infecs_ba(n: usize, iters: usize) {
         eprintln!("Error: {}", err);
     }
 }
+
+pub fn comix_sbm(n: usize) -> NetworkStructure {
+    let partitions: Vec<usize> = vec![n/2,n];
+    let rates_mat: Vec<Vec<f64>> = vec![
+        vec![0.01,0.0],
+        vec![0.03,0.001]
+    ];
+    NetworkStructure::new_sbm(n, partitions, rates_mat)
+}

@@ -1,6 +1,3 @@
-use std::vec;
-
-use na::DMatrix;
 // use networks::random_graphs::*;
 // use networks::tau_leap::*;
 // use networks::write_to_file::*;
@@ -9,7 +6,7 @@ extern crate nalgebra as na;
 
 pub(crate) fn main() {
     
-    let n: usize = 4;
+    let n: usize = 100_000;
 
     // function to test outbreak on BA graph and write SIR compartments to csv (SIR)
     // test_sir_ba(n);
@@ -19,13 +16,12 @@ pub(crate) fn main() {
     // test_infecs_ba(n, iters);
 
     // Testing SBM
-    let partitions: Vec<usize> = vec![n/2,n];
-    let rates_mat: Vec<Vec<f64>> = vec![
-        vec![1.0,0.0],
-        vec![0.0,1.0]
-    ];
-    let network_structure: NetworkStructure = NetworkStructure::new_sbm(n, partitions, rates_mat);
-    let matrix = DMatrix::from(&network_structure.adjacency_matrix);
-    dbg!(matrix);
+    // let start = std::time::Instant::now();
+    // let network_structure: NetworkStructure = comix_sbm(n);
+    // let elapsed = start.elapsed();
+    // println!("{} seconds", elapsed.as_secs());
+
+    // Testing Graphics
+    networks::visualisation::interactive_example();
 }
 

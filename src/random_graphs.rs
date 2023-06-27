@@ -96,7 +96,7 @@ impl NetworkStructure {
 
         // loop through partitions and then individuals
         let mut last_idx: [usize;2] = [0,0];
-        let mut rand_num: f64 = rng.gen();
+        let mut rand_num: f64;
         
         // loop through lower triangular
         let mut part_i: usize; let mut part_j: usize;
@@ -112,6 +112,7 @@ impl NetworkStructure {
                     .position(|&x| (j/x) < 1)
                     .unwrap();
                 // randomly generate edges with probability prob_mat
+                rand_num = rng.gen();
                 if rand_num < rates_mat[part_i][part_j] {
                     coo_mat.push(i, j, 1.0);
                     coo_mat.push(j, i, 1.0);
