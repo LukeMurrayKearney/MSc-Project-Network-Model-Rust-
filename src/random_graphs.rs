@@ -97,33 +97,39 @@ impl NetworkStructure {
         // loop through partitions and then individuals
         let mut last_idx: [usize;2] = [0,0];
         let mut rand_num: f64 = rng.gen();
-        // copy partitions to use in column iterations, to only look upper triangular
-        let mut tmp_partitions: Vec<usize> = partitions.clone();
-
-        for (part_i, x) in partitions.iter().enumerate() {
-            for i in last_idx[0]..*x {
-                last_idx[1] = 0;
-                for (part_j, y) in tmp_partitions.iter().enumerate() {
-                    for j in last_idx[1]..*y {
-                        if rand_num < rates_mat[part_i][part_j] {
-                            coo_mat.push(i, j, 1.0);
-                            coo_mat.push(j, i, 1.0);
-                            degrees[i] += 1.0;
-                            degrees[j] += 1.0;
-                        }
-                        rand_num = rng.gen();
-                    }
+        
+        // loop through lower triangular
+        let mut part_i: usize; let mut part_j: usize;
+        for i in 0..n {
+            for j in 0..i {
+                // find which block we are in
+                part_i = partitions
+                    .iter()
+                    .position(|&x| (i/x) < 1)
+                    .unwrap();
+                part_j = partitions
+                    .iter()
+                    .position(|&x| (j/x) < 1)
+                    .unwrap();
+                // randomly generate edges with probability prob_mat
+                if rand_num < rates_mat[part_i][part_j] {
+                    coo_mat.push(i, j, 1.0);
+                    coo_mat.push(j, i, 1.0);
+                    degrees[i] += 1.0;
+                    degrees[j] += 1.0;
                 }
             }
-            tmp_partitions.remove(0);
         }
         
         // define ages from partitioning and adjacency matrix as Csr mat
+        last_idx[0] = 0;
         let ages: Vec<usize> = partitions  
             .iter()
             .enumerate()
             .flat_map(|(i,x)| {
-                vec![i; *x]
+                let answer = vec![i; *x - last_idx[0]];
+                last_idx[0] = *x;
+                answer
             })
             .collect();
         let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);

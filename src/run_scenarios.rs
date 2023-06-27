@@ -18,7 +18,7 @@ pub fn test_sir_ba(n: usize) {
     outbreak_results_csv(sir_results, network_properties.result_type,"../../csv/BA_results_10_000.csv");
 }
 
-pub fn test_infecs_ba(n: usize) {
+pub fn test_infecs_ba(n: usize, iters: usize) {
 
     // define network and initial infection proportion
     let initially_infected: f64 = 0.0001;
@@ -27,7 +27,7 @@ pub fn test_infecs_ba(n: usize) {
     
     // outbreak type and parameters
     network_properties.params(vec![0.02, 1.0/7.0, 2.0/365.0]);
-    network_properties.result_type = ResultType::AvgInfections(30);
+    network_properties.result_type = ResultType::AvgInfections(iters);
     
     // run outbreak with timing mechanism
     let start = std::time::Instant::now();
