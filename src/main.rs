@@ -20,8 +20,5 @@ pub(crate) fn main() {
     // let network_structure: NetworkStructure = comix_sbm(n);
     // let elapsed = start.elapsed();
     // println!("{} seconds", elapsed.as_secs());
-
-    // Testing Graphics
-    networks::visualisation::interactive_example();
 }
 
