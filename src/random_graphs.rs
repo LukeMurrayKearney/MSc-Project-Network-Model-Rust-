@@ -90,6 +90,14 @@ impl NetworkStructure {
 
     pub fn new_sbm(n: usize, partitions: Vec<usize>, rates_mat: Vec<Vec<f64>>) -> NetworkStructure {
 
+        // transform rates matrix to probability matrix 
+        let prob_mat: Vec<Vec<f64>> = rates_mat
+            .iter()
+            .enumerate()
+            .map(|(i, row)| {
+                row.iter().map(||)
+            })
+
         let mut rng: ThreadRng = rand::thread_rng();
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
         let mut degrees: Vec<f64> = vec![0.0;n];
