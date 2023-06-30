@@ -42,10 +42,22 @@ pub fn test_infecs_ba(n: usize, iters: usize) {
 }
 
 pub fn comix_sbm(n: usize) -> NetworkStructure {
-    let partitions: Vec<usize> = vec![n/2,n];
+
+    // age brackets, 0-17 / 18-39 / 40-65 / 65+
+    // proportions,  20.7 / 28.5  / 32.2  / 19.6
+    // https://www.ethnicity-facts-figures.service.gov.uk/uk-population-by-ethnicity/demographics/age-groups/latest
+    let partitions: Vec<usize> = vec![
+        (20.7*(n as f64)/100.0) as usize, 
+        (49.2*(n as f64)/100.0) as usize, 
+        (81.4*(n as f64)/100.0) as usize, 
+        n
+    ];
+
     let rates_mat: Vec<Vec<f64>> = vec![
-        vec![0.01,0.0],
-        vec![0.03,0.001]
+        vec![5.3, 1.1, 2.1, 0.31],
+        vec![1.1, 1.4, 2.2, 0.77],
+        vec![2.1, 2.2, 2.4, 1.1],
+        vec![0.31, 0.77, 1.1, 1.4]
     ];
     NetworkStructure::new_sbm(n, partitions, rates_mat)
 }

@@ -90,13 +90,28 @@ impl NetworkStructure {
 
     pub fn new_sbm(n: usize, partitions: Vec<usize>, rates_mat: Vec<Vec<f64>>) -> NetworkStructure {
 
+        // find consecutive group sizes to turn rates to probabilities
+        let mut group_sizes: Vec<usize> = partitions
+            .windows(2)
+            .map(|pair| {
+                pair[1] - pair[0]
+            })
+            .collect();
+        group_sizes.insert(0,partitions[0]);
         // transform rates matrix to probability matrix 
         let prob_mat: Vec<Vec<f64>> = rates_mat
             .iter()
             .enumerate()
             .map(|(i, row)| {
-                row.iter().map(||)
+                row.iter().map(|rate| {
+                    rate / (group_sizes[i] as f64)
+                })
+                .collect()
             })
+            .collect();
+
+        println!("{:?}, \n {:?}", partitions, group_sizes);
+        println!("{:?}, \n {:?}", rates_mat, prob_mat);
 
         let mut rng: ThreadRng = rand::thread_rng();
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
@@ -121,7 +136,7 @@ impl NetworkStructure {
                     .unwrap();
                 // randomly generate edges with probability prob_mat
                 rand_num = rng.gen();
-                if rand_num < rates_mat[part_i][part_j] {
+                if rand_num < prob_mat[part_i][part_j] {
                     coo_mat.push(i, j, 1.0);
                     coo_mat.push(j, i, 1.0);
                     degrees[i] += 1.0;
