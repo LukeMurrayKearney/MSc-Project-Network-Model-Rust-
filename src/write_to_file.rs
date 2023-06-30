@@ -12,7 +12,7 @@ pub fn outbreak_results_csv(output: Output, result_type: ResultType, path: &str)
     let mut writer = Writer::from_writer(file);
     let result = match result_type {
         ResultType::SIR => output.sir,
-        ResultType::AvgInfections(_) => output.infections
+        ResultType::AvgInfections(_) => output.infections,
     };
     for row in result.iter() {
         let row_record: Vec<String> = row.into_iter().map(|value| value.to_string()).collect();
@@ -21,7 +21,7 @@ pub fn outbreak_results_csv(output: Output, result_type: ResultType, path: &str)
     writer.flush().expect("Failed to flush writer");
 }
 
-pub fn outbreak_results_json<T: Serialize>(data: &T, file_path: &str) -> std::io::Result<()> {
+pub fn results_json<T: Serialize>(data: &T, file_path: &str) -> std::io::Result<()> {
     let json_string = serde_json::to_string(data)?;
     let mut file = File::create(file_path)?;
     file.write_all(json_string.as_bytes())?;

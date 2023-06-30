@@ -16,15 +16,7 @@ pub(crate) fn main() {
     // test_infecs_ba(n, iters);
 
     // Testing SBM
-    let start = std::time::Instant::now();
     let network_structure: NetworkStructure = comix_sbm(n);
-    let elapsed = start.elapsed();
-    println!("{} seconds", elapsed.as_secs());
-    let max_degree: Vec<f64> = network_structure.degree
-        .iter()
-        .filter(|&x| *x > 10.0)
-        .map(|x| *x)
-        .collect();
-    println!("{:?}", max_degree);
+    network_structure_json(&network_structure);
 }
 

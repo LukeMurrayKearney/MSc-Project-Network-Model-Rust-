@@ -35,8 +35,8 @@ pub fn test_infecs_ba(n: usize, iters: usize) {
     let elapsed = start.elapsed();
     println!("{} seconds", elapsed.as_secs());
 
-    //print results to a csv
-    if let Err(err) = outbreak_results_json(&output, "../../csv/BA_results_infections_SIRS_0.01.json") {
+    //print results to a json
+    if let Err(err) = results_json(&output, "../../csv/BA_results_infections_SIRS_0.01.json") {
         eprintln!("Error: {}", err);
     }
 }
@@ -60,4 +60,14 @@ pub fn comix_sbm(n: usize) -> NetworkStructure {
         vec![0.31, 0.77, 1.1, 1.4]
     ];
     NetworkStructure::new_sbm(n, partitions, rates_mat)
+}
+
+pub fn network_structure_json(network_structure: &NetworkStructure) {
+
+    let mut output: Output = Output::new();
+    output.network_struct = SerializeableNetwork::from(network_structure);
+    //print results to a json
+    if let Err(err) = results_json(&output, "../../json/SBM_network.json") {
+        eprintln!("Error: {}", err);
+    }
 }

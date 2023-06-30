@@ -1,6 +1,6 @@
 extern crate nalgebra as na;
 use std::vec;
-use nalgebra_sparse::{coo::{CooMatrix}, csr::CsrMatrix};
+use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 extern crate random_choice;
 use self::random_choice::random_choice;
 use rand::prelude::*;
@@ -44,9 +44,9 @@ pub struct NetworkProperties {
 #[derive(Debug,Serialize)]
 pub struct Output {
     pub sir: Vec<Vec<usize>>,
-    pub infections: Vec<Vec<usize>>
+    pub infections: Vec<Vec<usize>>,
+    pub network_struct: SerializeableNetwork
 }
-
 
 impl NetworkStructure {
 
@@ -109,9 +109,6 @@ impl NetworkStructure {
                 .collect()
             })
             .collect();
-
-        println!("{:?}, \n {:?}", partitions, group_sizes);
-        println!("{:?}, \n {:?}", rates_mat, prob_mat);
 
         let mut rng: ThreadRng = rand::thread_rng();
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
@@ -233,6 +230,39 @@ impl NetworkProperties {
 
 impl Output {
     pub fn new() -> Output {
-        Output { sir: Vec::new(), infections: Vec::new() }
+        Output { sir: Vec::new(), infections: Vec::new(), network_struct: SerializeableNetwork::new() }
+    }
+}
+
+#[derive(Debug,Serialize)]
+pub struct SerializeableNetwork {
+    row_idx: Vec<usize>,
+    col_idx: Vec<usize>,
+    values: Vec<f64>,
+    ages: Vec<usize>,
+    degrees: Vec<f64>
+}
+
+impl SerializeableNetwork {
+    
+    pub fn new() -> SerializeableNetwork {
+        SerializeableNetwork { 
+            row_idx: Vec::new(), 
+            col_idx: Vec::new(), 
+            values: Vec::new(), 
+            ages: Vec::new(), 
+            degrees: Vec::new() 
+        }
+    }
+
+    pub fn from(network_structure: &NetworkStructure) -> SerializeableNetwork {
+        let coo_mat: CooMatrix<f64> = CooMatrix::from(&network_structure.adjacency_matrix);
+        SerializeableNetwork {
+            row_idx: coo_mat.row_indices().iter().map(|&x| x).collect(),
+            col_idx: coo_mat.col_indices().iter().map(|&x| x).collect(),
+            values: coo_mat.values().iter().map(|&x| x).collect(),
+            ages: network_structure.age_brackets.clone(),
+            degrees: network_structure.degree.clone()
+        }
     }
 }
