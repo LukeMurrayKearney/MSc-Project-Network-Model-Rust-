@@ -62,6 +62,27 @@ pub fn comix_sbm(n: usize) -> NetworkStructure {
     NetworkStructure::new_sbm(n, partitions, rates_mat)
 }
 
+pub fn comix_sbm_weighted(n: usize) -> NetworkStructure {
+
+    // age brackets, 0-17 / 18-39 / 40-65 / 65+
+    // proportions,  20.7 / 28.5  / 32.2  / 19.6
+    // https://www.ethnicity-facts-figures.service.gov.uk/uk-population-by-ethnicity/demographics/age-groups/latest
+    let partitions: Vec<usize> = vec![
+        (20.7*(n as f64)/100.0) as usize, 
+        (49.2*(n as f64)/100.0) as usize, 
+        (81.4*(n as f64)/100.0) as usize, 
+        n
+    ];
+
+    let rates_mat: Vec<Vec<f64>> = vec![
+        vec![5.3, 1.1, 2.1, 0.31],
+        vec![1.1, 1.4, 2.2, 0.77],
+        vec![2.1, 2.2, 2.4, 1.1],
+        vec![0.31, 0.77, 1.1, 1.4]
+    ];
+    NetworkStructure::new_sbm_weighted(n, partitions, rates_mat)
+}
+
 pub fn network_structure_json(network_structure: &NetworkStructure) {
 
     let mut output: Output = Output::new();
