@@ -3,6 +3,7 @@ use std::vec;
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 extern crate random_choice;
 use self::random_choice::random_choice;
+use statrs::distribution::{NegativeBinomial};
 use rand::prelude::*;
 use serde::{Serialize};
 
@@ -134,6 +135,90 @@ impl NetworkStructure {
                 // randomly generate edges with probability prob_mat
                 rand_num = rng.gen();
                 if rand_num < prob_mat[part_i][part_j] {
+                    coo_mat.push(i, j, 1.0);
+                    coo_mat.push(j, i, 1.0);
+                    degrees[i] += 1.0;
+                    degrees[j] += 1.0;
+                }
+            }
+        }
+        
+        // define ages from partitioning and adjacency matrix as Csr mat
+        last_idx[0] = 0;
+        let ages: Vec<usize> = partitions  
+            .iter()
+            .enumerate()
+            .flat_map(|(i,x)| {
+                let answer = vec![i; *x - last_idx[0]];
+                last_idx[0] = *x;
+                answer
+            })
+            .collect();
+        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
+
+        // ensure ages and degree length is consistent
+        assert_eq!(ages.len(), degrees.len()); 
+
+        NetworkStructure {
+            adjacency_matrix: matrix,
+            degree: degrees,
+            age_brackets: ages
+        }
+    }
+
+    pub fn new_sbm_weighted(n: usize, partitions: Vec<usize>, rates_mat: Vec<Vec<f64>>) -> NetworkStructure {
+
+        // find consecutive group sizes to turn rates to probabilities
+        let mut group_sizes: Vec<usize> = partitions
+            .windows(2)
+            .map(|pair| {
+                pair[1] - pair[0]
+            })
+            .collect();
+        group_sizes.insert(0,partitions[0]);
+        // transform rates matrix to probability matrix 
+        let prob_mat: Vec<Vec<f64>> = rates_mat
+            .iter()
+            .enumerate()
+            .map(|(i, row)| {
+                row.iter().map(|rate| {
+                    rate / (group_sizes[i] as f64)
+                })
+                .collect()
+            })
+            .collect();
+        // finish this, do weight calculation here from NB, mu = 4.79, k = 0.54
+        let mu: f64 = 4.79; let k: f64 = 0.54;
+        let mut rng: ThreadRng = rand::thread_rng();
+        let weights: Vec<f64> = NegativeBinomial::new(k, k/(k+mu))
+            .unwrap()
+            .sample_iter(&mut rng)
+            .take(n)
+            .map(|x| x as f64)
+            .collect();
+        
+        let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
+        let mut degrees: Vec<f64> = vec![0.0;n];
+        // loop through partitions and then individuals
+        let mut last_idx: [usize;2] = [0,0];
+        let mut rand_num: f64;
+        
+        // loop through lower triangular
+        let mut part_i: usize; let mut part_j: usize;
+        for i in 0..n {
+            for j in 0..i {
+                // find which block we are in
+                part_i = partitions
+                    .iter()
+                    .position(|&x| (i/x) < 1)
+                    .unwrap();
+                part_j = partitions
+                    .iter()
+                    .position(|&x| (j/x) < 1)
+                    .unwrap();
+                // randomly generate edges with probability prob_mat
+                rand_num = rng.gen();
+                if rand_num < prob_mat[part_i][part_j] * weights[i] * weights[j] {
                     coo_mat.push(i, j, 1.0);
                     coo_mat.push(j, i, 1.0);
                     degrees[i] += 1.0;
