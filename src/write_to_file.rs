@@ -1,8 +1,8 @@
 use csv::Writer;
 use crate::random_graphs::{Output, ResultType};
-use serde::{Serialize};
+use serde::{Serialize, Deserialize};
 use serde_json;
-use std::io::Write;
+use std::io::{Write,Read};
 use std::fs::File;
 
 pub fn outbreak_results_csv(output: Output, result_type: ResultType, path: &str) {
@@ -26,4 +26,39 @@ pub fn results_json<T: Serialize>(data: &T, file_path: &str) -> std::io::Result<
     let mut file = File::create(file_path)?;
     file.write_all(json_string.as_bytes())?;
     Ok(())
+}
+
+fn read_csv_file(file_path: &str) -> Result<Vec<Vec<f64>>, Box<dyn std::error::Error>> {
+    let mut file = File::open(file_path)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+
+    let mut reader = csv::ReaderBuilder::new().from_reader(content.as_bytes());
+    let mut data: Vec<Vec<f64>> = Vec::new();
+
+    let headers = reader.headers()?.clone();
+    data.push(headers.iter().map(|header| header.parse::<f64>().unwrap()).collect());
+
+    for result in reader.records() {
+        let record = result?;
+        let row: Vec<f64> = record
+            .iter()
+            .map(|value| value.parse::<f64>())
+            .collect::<Result<Vec<f64>, _>>()?;
+        data.push(row);
+    }
+
+    Ok(data)
+}
+
+pub fn read_rates_mat() -> Vec<Vec<f64>> {
+    let file_path = "model_input_files/rates_matrix.csv";
+    let rates_mat = match read_csv_file(file_path) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("Error {}", err);
+            Vec::new()
+        }
+    };
+    rates_mat
 }

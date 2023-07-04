@@ -88,7 +88,7 @@ pub fn network_structure_json(network_structure: &NetworkStructure) {
     let mut output: Output = Output::new();
     output.network_struct = SerializeableNetwork::from(network_structure);
     //print results to a json
-    if let Err(err) = results_json(&output, "../../json/SBM_network.json") {
+    if let Err(err) = results_json(&output, "../../json/SBM_network_weight.json") {
         eprintln!("Error: {}", err);
     }
 }

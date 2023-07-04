@@ -1,3 +1,4 @@
+use crate::useful_functions::*;
 extern crate nalgebra as na;
 use std::vec;
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
@@ -51,6 +52,20 @@ pub struct Output {
 
 impl NetworkStructure {
 
+    pub fn new_molloy_reed(n: usize, partitions: Vec<usize>, prob_mat: Vec<Vec<f64>>) {     
+        let mut rng: ThreadRng = rand::thread_rng();
+        let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
+        let mut degrees: Vec<f64> = vec![0.0;n];
+        // calculate group sizes
+        let mut group_sizes: Vec<usize> = partitions
+            .windows(2)
+            .map(|pair| {
+                pair[1] - pair[0]
+            })
+            .collect();
+        group_sizes.insert(0,partitions[0]);
+    }
+
     pub fn new_ba(n: usize, m0: usize, m: usize) -> NetworkStructure {
         //check dimensions correct
         if m0 < m {
@@ -91,25 +106,8 @@ impl NetworkStructure {
 
     pub fn new_sbm(n: usize, partitions: Vec<usize>, rates_mat: Vec<Vec<f64>>) -> NetworkStructure {
 
-        // find consecutive group sizes to turn rates to probabilities
-        let mut group_sizes: Vec<usize> = partitions
-            .windows(2)
-            .map(|pair| {
-                pair[1] - pair[0]
-            })
-            .collect();
-        group_sizes.insert(0,partitions[0]);
         // transform rates matrix to probability matrix 
-        let prob_mat: Vec<Vec<f64>> = rates_mat
-            .iter()
-            .enumerate()
-            .map(|(i, row)| {
-                row.iter().map(|rate| {
-                    rate / (group_sizes[i] as f64)
-                })
-                .collect()
-            })
-            .collect();
+        let prob_mat: Vec<Vec<f64>> = rates_to_probabilities(rates_mat, &partitions); 
 
         let mut rng: ThreadRng = rand::thread_rng();
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
@@ -194,7 +192,7 @@ impl NetworkStructure {
             .unwrap()
             .sample_iter(&mut rng)
             .take(n)
-            .map(|x| x as f64)
+            .map(|x| (x as f64) + 1.0)
             .collect();
         
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
