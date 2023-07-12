@@ -1,6 +1,7 @@
 use csv::Writer;
 use crate::random_graphs::{Output, ResultType};
-use serde::{Serialize, Deserialize};
+use crate::useful_functions::DistributionParameters;
+use serde::Serialize;
 use serde_json;
 use std::io::{Write,Read};
 use std::fs::File;
@@ -51,6 +52,16 @@ fn read_csv_file(file_path: &str) -> Result<Vec<Vec<f64>>, Box<dyn std::error::E
     Ok(data)
 }
 
+fn params_json(file_path: &str) -> Result<DistributionParameters, Box<dyn std::error::Error>> {
+    let mut file = File::open(file_path)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+
+    let my_struct: DistributionParameters = serde_json::from_str(&content)?;
+
+    Ok(my_struct)
+}
+
 pub fn read_rates_mat() -> Vec<Vec<f64>> {
     let file_path = "model_input_files/rates_matrix.csv";
     let rates_mat = match read_csv_file(file_path) {
@@ -61,4 +72,16 @@ pub fn read_rates_mat() -> Vec<Vec<f64>> {
         }
     };
     rates_mat
+}
+
+pub fn read_params_json() -> DistributionParameters {
+    let file_path = "model_input_files/fitting_parameters.json";
+    let my_struct = match params_json(&file_path) {
+        Ok(my_struct) => my_struct,
+        Err(err) => {
+            eprintln!("Error: {}", err);
+            DistributionParameters::new()
+        }
+    };
+    my_struct
 }
