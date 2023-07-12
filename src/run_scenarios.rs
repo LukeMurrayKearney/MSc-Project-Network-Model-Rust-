@@ -65,7 +65,7 @@ pub fn comix_sbm(n: usize) -> NetworkStructure {
 pub fn comix_sbm_weighted(n: usize) -> NetworkStructure {
 
     // age brackets, 0-17 / 18-39 / 40-65 / 65+
-    // proportions,  20.7 / 28.5  / 32.2  / 19.6
+    // proportions,  20.7 / 28.5  / 32.2  / 19.6nrows
     // https://www.ethnicity-facts-figures.service.gov.uk/uk-population-by-ethnicity/demographics/age-groups/latest
     let partitions: Vec<usize> = vec![
         (20.7*(n as f64)/100.0) as usize, 

@@ -1,3 +1,18 @@
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct DistributionParameters {
+    pub lambda: Vec<Vec<f64>>,
+    pub p_geom: Vec<Vec<f64>>,
+    pub p: Vec<Vec<f64>>
+}
+
+impl DistributionParameters {
+    pub fn new() -> DistributionParameters {
+        DistributionParameters { lambda: Vec::new(), p_geom: Vec::new(), p: Vec::new() }
+    }
+}
+
 pub fn rates_to_probabilities(rates_mat: Vec<Vec<f64>>, partitions: &Vec<usize>) -> Vec<Vec<f64>> {
     
     // find consecutive group sizes to turn rates to probabilities

@@ -1,12 +1,13 @@
 use crate::useful_functions::*;
+use crate::write_to_file::read_params_json;
 extern crate nalgebra as na;
 use std::vec;
 use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
 extern crate random_choice;
 use self::random_choice::random_choice;
-use statrs::distribution::{NegativeBinomial};
+use statrs::distribution::{Poisson, Geometric, NegativeBinomial};
 use rand::prelude::*;
-use serde::{Serialize};
+use serde::Serialize;
 
 #[derive(Clone,Debug)]
 pub enum State {
@@ -52,7 +53,7 @@ pub struct Output {
 
 impl NetworkStructure {
 
-    pub fn new_molloy_reed(n: usize, partitions: Vec<usize>, prob_mat: Vec<Vec<f64>>) {     
+    pub fn new_molloy_reed(n: usize, partitions: Vec<usize>) -> NetworkStructure {     
         let mut rng: ThreadRng = rand::thread_rng();
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
         let mut degrees: Vec<f64> = vec![0.0;n];
@@ -64,6 +65,74 @@ impl NetworkStructure {
             })
             .collect();
         group_sizes.insert(0,partitions[0]);
+        // import parameters to sample
+        let dist_params = read_params_json();
+        
+        // start iteration through age brackets, take(i+1) makes loop run over lower diag to remove double counting
+        for (i, x) in partitions.iter().enumerate() {
+            for (j, y) in partitions.iter().enumerate().take(i+1) {
+                // create distributions and sample degrees from this 
+                let poisson = Poisson::new(dist_params.lambda[i][j]);
+                let geometric = Geometric::new(dist_params.p_geom[i][j]);
+                let p = dist_params.p[i][j];
+                let out_degree: Vec<usize> = (0..group_sizes[i])
+                    .map(|_| {
+                        (p*poisson.as_ref().unwrap().sample(&mut rng) + (1.0-p)*geometric.as_ref().unwrap().sample(&mut rng)) as usize
+                    }
+                    )
+                    .collect();
+                // repeat for in degrees
+                let poisson = Poisson::new(dist_params.lambda[j][i]);
+                let geometric = Geometric::new(dist_params.p_geom[j][i]);
+                let p = dist_params.p[j][i];
+                let in_degree: Vec<usize> = (0..group_sizes[j])
+                    .map(|_| {
+                        (p*poisson.as_ref().unwrap().sample(&mut rng) + (1.0-p)*geometric.as_ref().unwrap().sample(&mut rng)) as usize
+                    }
+                    )
+                    .collect();
+                
+                // fix!! getting values larger than 1 in adjacency matrix and not removing self loops and not counting unassigned edges
+                // loop over out degrees and match with the in nodes
+                for (node_i, degree) in out_degree.iter().enumerate() {
+                    let mut connections: Vec<usize> = in_degree
+                        .iter()
+                        .enumerate()
+                        .filter(|(_,x)| **x > 0)
+                        .map(|(i,_)| i)
+                        .collect();
+                    connections.shuffle(&mut rng);
+                    // connect nodes in the adjacency matrix
+                    for node_j in connections.iter().take(*degree) {
+                        coo_mat.push(*x-group_sizes[i]+node_i, *y-group_sizes[j]+*node_j, 1.0);
+                        coo_mat.push(*y-group_sizes[j]+*node_j, *x-group_sizes[i]+node_i, 1.0);
+                        degrees[*x-group_sizes[i]+node_i] += 1.0;
+                        degrees[*y-group_sizes[j]+*node_j] += 1.0;
+                    }
+                }
+            }
+        }
+        // define ages from partitioning and adjacency matrix as Csr mat
+        let mut last_idx = 0;
+        let ages: Vec<usize> = partitions  
+            .iter()
+            .enumerate()
+            .flat_map(|(i,x)| {
+                let answer = vec![i; *x - last_idx];
+                last_idx = *x;
+                answer
+            })
+            .collect();
+        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
+
+        // ensure ages and degree length is consistent
+        assert_eq!(ages.len(), degrees.len()); 
+
+        NetworkStructure {
+            adjacency_matrix: matrix,
+            degree: degrees,
+            age_brackets: ages
+        }
     }
 
     pub fn new_ba(n: usize, m0: usize, m: usize) -> NetworkStructure {
@@ -165,7 +234,7 @@ impl NetworkStructure {
     }
 
     pub fn new_sbm_weighted(n: usize, partitions: Vec<usize>, rates_mat: Vec<Vec<f64>>) -> NetworkStructure {
-
+        // unfinished weighting step !!
         // find consecutive group sizes to turn rates to probabilities
         let mut group_sizes: Vec<usize> = partitions
             .windows(2)
