@@ -53,7 +53,7 @@ pub struct Output {
 
 impl NetworkStructure {
 
-    pub fn new_molloy_reed(n: usize, partitions: Vec<usize>) -> NetworkStructure {     
+    pub fn new_molloy_reed(n: usize, partitions: Vec<usize>, file_path: &str) -> NetworkStructure {     
         let mut rng: ThreadRng = rand::thread_rng();
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
         let mut degrees: Vec<f64> = vec![0.0;n];
@@ -66,7 +66,7 @@ impl NetworkStructure {
             .collect();
         group_sizes.insert(0,partitions[0]);
         // import parameters to sample
-        let dist_params = read_params_json();
+        let dist_params = read_params_json(file_path);
         
         // start iteration through age brackets, take(i+1) makes loop run over lower diag to remove double counting
         for (i, x) in partitions.iter().enumerate() {
@@ -75,7 +75,7 @@ impl NetworkStructure {
                 let poisson = Poisson::new(dist_params.lambda[i][j]);
                 let geometric = Geometric::new(dist_params.p_geom[i][j]);
                 let p = dist_params.p[i][j];
-                let out_degree: Vec<usize> = (0..group_sizes[i])
+                let mut out_degree: Vec<usize> = (0..group_sizes[i])
                     .map(|_| {
                         (p*poisson.as_ref().unwrap().sample(&mut rng) + (1.0-p)*geometric.as_ref().unwrap().sample(&mut rng)) as usize
                     }
@@ -85,29 +85,48 @@ impl NetworkStructure {
                 let poisson = Poisson::new(dist_params.lambda[j][i]);
                 let geometric = Geometric::new(dist_params.p_geom[j][i]);
                 let p = dist_params.p[j][i];
-                let in_degree: Vec<usize> = (0..group_sizes[j])
+                let mut in_degree: Vec<usize> = (0..group_sizes[j])
                     .map(|_| {
                         (p*poisson.as_ref().unwrap().sample(&mut rng) + (1.0-p)*geometric.as_ref().unwrap().sample(&mut rng)) as usize
                     }
                     )
                     .collect();
                 
-                // fix!! getting values larger than 1 in adjacency matrix and not removing self loops and not counting unassigned edges
                 // loop over out degrees and match with the in nodes
-                for (node_i, degree) in out_degree.iter().enumerate() {
+                let mut repeats: Vec<(usize,usize)> = Vec::new();
+                for node_i in 0..out_degree.len() {
+                // for (node_i, degree) in out_degree.iter().enumerate() {
+                    // don't allow self loops and double counting
+                    if i == j {
+                        in_degree[node_i] = 0;
+                    }
                     let mut connections: Vec<usize> = in_degree
                         .iter()
                         .enumerate()
-                        .filter(|(_,x)| **x > 0)
+                        .filter(|(idx, x)| {
+                            **x > 0 && // current in degree > 0
+                            {
+                                // check if link already created
+                                if *idx > node_i {
+                                    return true
+                                }
+                                !repeats.contains(&(*idx, node_i))
+                            }
+                        })
                         .map(|(i,_)| i)
                         .collect();
                     connections.shuffle(&mut rng);
                     // connect nodes in the adjacency matrix
-                    for node_j in connections.iter().take(*degree) {
+                    for node_j in connections.iter().take(out_degree[node_i]) {
                         coo_mat.push(*x-group_sizes[i]+node_i, *y-group_sizes[j]+*node_j, 1.0);
                         coo_mat.push(*y-group_sizes[j]+*node_j, *x-group_sizes[i]+node_i, 1.0);
                         degrees[*x-group_sizes[i]+node_i] += 1.0;
                         degrees[*y-group_sizes[j]+*node_j] += 1.0;
+                        in_degree[*node_j] -= 1;
+                        if i == j {
+                            out_degree[node_i] -= 1;
+                        }
+                        repeats.push((node_i, *node_j));
                     }
                 }
             }
@@ -124,9 +143,6 @@ impl NetworkStructure {
             })
             .collect();
         let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
-
-        // ensure ages and degree length is consistent
-        assert_eq!(ages.len(), degrees.len()); 
 
         NetworkStructure {
             adjacency_matrix: matrix,

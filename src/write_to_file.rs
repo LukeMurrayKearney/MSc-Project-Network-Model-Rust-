@@ -74,8 +74,8 @@ pub fn read_rates_mat() -> Vec<Vec<f64>> {
     rates_mat
 }
 
-pub fn read_params_json() -> DistributionParameters {
-    let file_path = "model_input_files/fitting_parameters.json";
+pub fn read_params_json(file_path: &str) -> DistributionParameters {
+    let file_path = "model_input_files/fitting_parameters1.json";
     let my_struct = match params_json(&file_path) {
         Ok(my_struct) => my_struct,
         Err(err) => {

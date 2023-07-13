@@ -13,6 +13,14 @@ impl DistributionParameters {
     }
 }
 
+pub fn count_buckets(values: Vec<f64>) -> Vec<i32> {
+    let mut buckets = vec![0; values.iter().map(|&x| x as usize).max().unwrap()];
+    for i in values.iter() {
+        buckets[*i as usize - 1] += 1; 
+    }
+    buckets
+}
+
 pub fn rates_to_probabilities(rates_mat: Vec<Vec<f64>>, partitions: &Vec<usize>) -> Vec<Vec<f64>> {
     
     // find consecutive group sizes to turn rates to probabilities
