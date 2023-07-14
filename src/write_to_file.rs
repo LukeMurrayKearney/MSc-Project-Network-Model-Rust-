@@ -6,6 +6,15 @@ use serde_json;
 use std::io::{Write,Read};
 use std::fs::File;
 
+pub fn vector_to_csv(values: Vec<(usize, usize)>, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut writer = Writer::from_path(file_path)?;
+    for row in values {
+        writer.write_record(&[row.0.to_string(), row.1.to_string()])?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
 pub fn outbreak_results_csv(output: Output, result_type: ResultType, path: &str) {
     // serialize the results to json
     let file = std::fs::File::create(path)

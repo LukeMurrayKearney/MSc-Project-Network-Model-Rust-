@@ -57,6 +57,7 @@ impl NetworkStructure {
         let mut rng: ThreadRng = rand::thread_rng();
         let mut coo_mat: CooMatrix<f64> = CooMatrix::new(n,n);
         let mut degrees: Vec<f64> = vec![0.0;n];
+        let mut count: usize = 0;
         // calculate group sizes
         let mut group_sizes: Vec<usize> = partitions
             .windows(2)
@@ -95,29 +96,37 @@ impl NetworkStructure {
                 // loop over out degrees and match with the in nodes
                 let mut repeats: Vec<(usize,usize)> = Vec::new();
                 for node_i in 0..out_degree.len() {
-                // for (node_i, degree) in out_degree.iter().enumerate() {
                     // don't allow self loops and double counting
                     if i == j {
                         in_degree[node_i] = 0;
                     }
+                    count = 0;
                     let mut connections: Vec<usize> = in_degree
                         .iter()
                         .enumerate()
                         .filter(|(idx, x)| {
-                            **x > 0 && // current in degree > 0
-                            {
+                            // stop if passed out degree, and in degree must be non-zero
+                            if count < out_degree[node_i] && **x > 0 {
                                 // check if link already created
-                                if *idx > node_i {
+                                if *idx >= node_i {
+                                    count += 1;
                                     return true
                                 }
-                                !repeats.contains(&(*idx, node_i))
+                                else if !repeats.contains(&(*idx, node_i)) {
+                                    count += 1;
+                                    return true
+                                }
+                                else {
+                                    return false
+                                }
                             }
+                            return false
                         })
                         .map(|(i,_)| i)
                         .collect();
                     connections.shuffle(&mut rng);
                     // connect nodes in the adjacency matrix
-                    for node_j in connections.iter().take(out_degree[node_i]) {
+                    for node_j in connections.iter() {
                         coo_mat.push(*x-group_sizes[i]+node_i, *y-group_sizes[j]+*node_j, 1.0);
                         coo_mat.push(*y-group_sizes[j]+*node_j, *x-group_sizes[i]+node_i, 1.0);
                         degrees[*x-group_sizes[i]+node_i] += 1.0;

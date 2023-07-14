@@ -14,9 +14,9 @@ impl DistributionParameters {
 }
 
 pub fn count_buckets(values: Vec<f64>) -> Vec<i32> {
-    let mut buckets = vec![0; values.iter().map(|&x| x as usize).max().unwrap()];
+    let mut buckets = vec![0; values.iter().map(|&x| x as usize).max().unwrap() + 1];
     for i in values.iter() {
-        buckets[*i as usize - 1] += 1; 
+        buckets[*i as usize] += 1; 
     }
     buckets
 }
