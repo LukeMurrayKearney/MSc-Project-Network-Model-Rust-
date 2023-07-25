@@ -2,7 +2,7 @@ use crate::useful_functions::*;
 use crate::write_to_file::read_params_json;
 extern crate nalgebra as na;
 use std::vec;
-use nalgebra_sparse::{coo::CooMatrix, csr::CsrMatrix};
+use nalgebra_sparse::coo::CooMatrix;
 extern crate random_choice;
 use self::random_choice::random_choice;
 use statrs::distribution::{Poisson, Geometric, NegativeBinomial};
@@ -12,25 +12,28 @@ use serde::Serialize;
 #[derive(Clone,Debug)]
 pub enum State {
     Susceptible,
-    Infected,
-    Recovered
+    Exposed(usize),
+    Infected(usize),
+    Recovered(usize)
 }
 
 #[derive(Clone)]
 pub enum ResultType {
-    SIR,
-    AvgInfections(usize)
+    SEIR,
+    AvgInfections(usize),
+    SecondaryCases(usize),
 }
 
 #[derive(Clone)]
 pub enum OutbreakType {
     SIR,
-    SIRS
+    SIRS,
+    SEIRS
 }
 
 #[derive(Debug)]
 pub struct NetworkStructure {
-    pub adjacency_matrix: CsrMatrix<f64>,
+    pub adjacency_matrix: CooMatrix<f64>,
     pub degree: Vec<f64>,
     pub age_brackets: Vec<usize>
 }
@@ -41,14 +44,16 @@ pub struct NetworkProperties {
     pub results: Vec<Vec<usize>>,
     pub result_type: ResultType,
     pub outbreak_type: OutbreakType,
-    pub parameters: Vec<f64>
+    pub parameters: Vec<f64>,
+    pub secondary_cases: Vec<usize>
 }
 
 #[derive(Debug,Serialize)]
 pub struct Output {
-    pub sir: Vec<Vec<usize>>,
+    pub seir: Vec<Vec<usize>>,
     pub infections: Vec<Vec<usize>>,
-    pub network_struct: SerializeableNetwork
+    pub network_struct: SerializeableNetwork,
+    pub secondary_cases: Vec<Vec<usize>>
 }
 
 impl NetworkStructure {
@@ -151,10 +156,9 @@ impl NetworkStructure {
                 answer
             })
             .collect();
-        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
 
         NetworkStructure {
-            adjacency_matrix: matrix,
+            adjacency_matrix: coo_mat,
             degree: degrees,
             age_brackets: ages
         }
@@ -189,10 +193,9 @@ impl NetworkStructure {
                 degrees[*j] += 1.0;
             }
         }
-        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
         // result network struct with adjacency matrix
         NetworkStructure {
-            adjacency_matrix: matrix,
+            adjacency_matrix: coo_mat,
             degree: degrees,
             age_brackets: Vec::new()
         }
@@ -246,13 +249,12 @@ impl NetworkStructure {
                 answer
             })
             .collect();
-        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
 
         // ensure ages and degree length is consistent
         assert_eq!(ages.len(), degrees.len()); 
 
         NetworkStructure {
-            adjacency_matrix: matrix,
+            adjacency_matrix: coo_mat,
             degree: degrees,
             age_brackets: ages
         }
@@ -330,13 +332,12 @@ impl NetworkStructure {
                 answer
             })
             .collect();
-        let matrix: CsrMatrix<f64> = CsrMatrix::from(&coo_mat);
 
         // ensure ages and degree length is consistent
         assert_eq!(ages.len(), degrees.len()); 
 
         NetworkStructure {
-            adjacency_matrix: matrix,
+            adjacency_matrix: coo_mat,
             degree: degrees,
             age_brackets: ages
         }
@@ -349,9 +350,10 @@ impl NetworkProperties {
         NetworkProperties { 
             nodal_states: vec![State::Susceptible; network.degree.len()],
             results: Vec::new(),
-            result_type: ResultType::SIR,
+            result_type: ResultType::SEIR,
             outbreak_type: OutbreakType::SIR,
-            parameters: vec![0.1,0.2]
+            parameters: vec![0.1,0.2],
+            secondary_cases: vec![0; network.degree.len()]
         }
     }
 
@@ -364,6 +366,10 @@ impl NetworkProperties {
             3 => {
                 self.parameters = params;
                 self.outbreak_type = OutbreakType::SIRS;
+            }
+            4 => {
+                self.parameters = params;
+                self.outbreak_type = OutbreakType::SEIRS;
             }
             _ => {
                 println!("Enter a vector of 2/3 parameters")
@@ -387,18 +393,19 @@ impl NetworkProperties {
         let mut indices: Vec<usize> = (0..self.nodal_states.len()).collect();
         indices.shuffle(&mut rng);
         for i in 0..number_of_infecteds {
-            self.nodal_states[indices[i]] = State::Infected
+            self.nodal_states[indices[i]] = State::Infected(0)
         }
         self.results.push(self.count_states());
     }
 
     pub fn count_states(&self) -> Vec<usize> {
-        let mut result: Vec<usize> = vec![0; 3];
+        let mut result: Vec<usize> = vec![0; 4];
         for state in self.nodal_states.iter() {
             match state {
                 State::Susceptible => result[0] += 1,
-                State::Infected => result[1] += 1,
-                State::Recovered => result[2] += 1
+                State::Exposed(_) => result[1] += 1,
+                State::Infected(_) => result[2] += 1,
+                State::Recovered(_) => result[3] += 1
             }
         }
         result
@@ -407,7 +414,7 @@ impl NetworkProperties {
 
 impl Output {
     pub fn new() -> Output {
-        Output { sir: Vec::new(), infections: Vec::new(), network_struct: SerializeableNetwork::new() }
+        Output { seir: Vec::new(), infections: Vec::new(), network_struct: SerializeableNetwork::new(), secondary_cases: Vec::new() }
     }
 }
 
@@ -433,7 +440,7 @@ impl SerializeableNetwork {
     }
 
     pub fn from(network_structure: &NetworkStructure) -> SerializeableNetwork {
-        let coo_mat: CooMatrix<f64> = CooMatrix::from(&network_structure.adjacency_matrix);
+        let coo_mat = network_structure.adjacency_matrix.clone();
         SerializeableNetwork {
             row_idx: coo_mat.row_indices().iter().map(|&x| x).collect(),
             col_idx: coo_mat.col_indices().iter().map(|&x| x).collect(),

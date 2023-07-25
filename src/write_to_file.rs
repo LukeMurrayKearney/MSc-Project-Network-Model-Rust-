@@ -21,8 +21,9 @@ pub fn outbreak_results_csv(output: Output, result_type: ResultType, path: &str)
         .expect("Failed to create csv");
     let mut writer = Writer::from_writer(file);
     let result = match result_type {
-        ResultType::SIR => output.sir,
+        ResultType::SEIR => output.seir,
         ResultType::AvgInfections(_) => output.infections,
+        ResultType::SecondaryCases(_) => output.secondary_cases,
     };
     for row in result.iter() {
         let row_record: Vec<String> = row.into_iter().map(|value| value.to_string()).collect();
