@@ -72,8 +72,8 @@ fn params_json(file_path: &str) -> Result<DistributionParameters, Box<dyn std::e
     Ok(my_struct)
 }
 
-pub fn read_rates_mat() -> Vec<Vec<f64>> {
-    let file_path = "model_input_files/rates_matrix.csv";
+pub fn read_rates_mat(file_path: &str) -> Vec<Vec<f64>> {
+    // let file_path = "model_input_files/rates_matrix.csv";
     let rates_mat = match read_csv_file(file_path) {
         Ok(data) => data,
         Err(err) => {
@@ -85,7 +85,7 @@ pub fn read_rates_mat() -> Vec<Vec<f64>> {
 }
 
 pub fn read_params_json(file_path: &str) -> DistributionParameters {
-    let file_path = "model_input_files/fitting_parameters1.json";
+    // let file_path = "model_input_files/fitting_parameters1.json";
     let my_struct = match params_json(&file_path) {
         Ok(my_struct) => my_struct,
         Err(err) => {

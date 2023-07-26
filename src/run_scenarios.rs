@@ -5,19 +5,37 @@ use crate::write_to_file::*;
 
 pub fn test_run_model(n: usize) {
     // define network with initial infection
-    let network_structure = NetworkStructure::new_molloy_reed(n, vec![n/9, 2*n/9, 3*n/9, 4*n/9, 5*n/9, 6*n/9, 7*n/9, 8*n/9, n], "");
+    let network_structure = NetworkStructure::new_molloy_reed(n, vec![n/9, 2*n/9, 3*n/9, 4*n/9, 5*n/9, 6*n/9, 7*n/9, 8*n/9, n], 
+        "model_input_files/fitting_parameters2.json");
+    // let rates_mat = read_rates_mat("model_input_files/rates_matrix2.csv");
+    // let network_structure = NetworkStructure::new_sbm(n, vec![n/9, 2*n/9, 3*n/9, 4*n/9, 5*n/9, 6*n/9, 7*n/9, 8*n/9, n], 
+    //     rates_mat);
     let mut network_properties = NetworkProperties::new(&network_structure);
-    network_properties.params(vec![0.007, 3.0, 7.0, 1000.0]);
+    network_properties.params(vec![0.02, 3.0, 7.0, 1000.0]);
     network_properties.outbreak_type = OutbreakType::SEIRS;
     network_properties.result_type = ResultType::SecondaryCases(1);
-    let maxtime: f64 = 365.0;
-    let initially_infected = 0.001;
+    let maxtime: f64 = 50.0;
+    let initially_infected = 0.005;
 
     let start = std::time::Instant::now();
     let output = run_model(&network_structure, &mut network_properties, maxtime, initially_infected);
     let elapsed = start.elapsed();
     println!("{} seconds", elapsed.as_secs());
-    outbreak_results_csv(output, network_properties.result_type,"../../csv/test2.csv");
+    outbreak_results_csv(output, network_properties.result_type,"model_output_files/secondary_cases_config2.csv");
+    // outbreak_results_csv(output, network_properties.result_type,"../../csv/test.csv");
+}
+
+pub fn test_create_network_config(n: usize) {
+    let network_structure = NetworkStructure::new_molloy_reed(n, vec![n/9, 2*n/9, 3*n/9, 4*n/9, 5*n/9, 6*n/9, 7*n/9, 8*n/9, n], 
+        "model_input_files/fitting_parameters2.json");
+    network_structure_json(&network_structure, "model_output_files/network_config2.json")
+}
+
+pub fn test_create_network_SBM(n: usize) {
+    let rates_mat = read_rates_mat("model_input_files/rates_matrix2.csv");
+    let network_structure = NetworkStructure::new_sbm(n, vec![n/9, 2*n/9, 3*n/9, 4*n/9, 5*n/9, 6*n/9, 7*n/9, 8*n/9, n], 
+        rates_mat);
+    network_structure_json(&network_structure, "model_output_files/network_SBM2.json")
 }
 
 // pub fn test_sir_ba(n: usize) {
@@ -101,12 +119,12 @@ pub fn comix_sbm_weighted(n: usize) -> NetworkStructure {
     NetworkStructure::new_sbm_weighted(n, partitions, rates_mat)
 }
 
-pub fn network_structure_json(network_structure: &NetworkStructure) {
+pub fn network_structure_json(network_structure: &NetworkStructure, file_path: &str) {
 
     let mut output: Output = Output::new();
     output.network_struct = SerializeableNetwork::from(network_structure);
     //print results to a json
-    if let Err(err) = results_json(&output, "../../json/SBM_network_weight.json") {
+    if let Err(err) = results_json(&output, file_path) {
         eprintln!("Error: {}", err);
     }
 }
