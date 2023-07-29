@@ -74,16 +74,17 @@ pub fn run_model(network_structure: &NetworkStructure, network_properties: &mut 
 
 fn step_model(network_structure: &NetworkStructure, network_properties: &mut NetworkProperties, rng: &mut ThreadRng) {
     let mut next_states: Vec<State> = vec![State::Susceptible; network_structure.degree.len()];
-    let poisson_infectious = Poisson::new(network_properties.parameters[2]).unwrap();
+    let poisson_infectious_period = Poisson::new(network_properties.parameters[2]).unwrap();
+    let poisson_exposed_period = Poisson::new(network_properties.parameters[1]).unwrap();
     for (i, state) in network_properties.nodal_states.iter().enumerate() {
         match *state {
             State::Susceptible => (),
             State::Exposed(days) => {
-                if days > network_properties.parameters[1] as usize {
-                    next_states[i] = State::Infected(poisson_infectious.sample(rng) as usize);
+                if days <= 0 {
+                    next_states[i] = State::Infected(poisson_infectious_period.sample(rng) as usize);
                 }
                 else {
-                    next_states[i] = State::Exposed(days + 1);
+                    next_states[i] = State::Exposed(days - 1);
                 }
             },
             State::Infected(days) => {
@@ -103,7 +104,7 @@ fn step_model(network_structure: &NetworkStructure, network_properties: &mut Net
                     match network_properties.nodal_states[*j] {
                         State::Susceptible => {
                             if rng.gen::<f64>() < network_properties.parameters[0] {
-                                next_states[*j] = State::Exposed(0);
+                                next_states[*j] = State::Exposed(poisson_exposed_period.sample(rng) as usize);
                                 network_properties.secondary_cases[i] += 1;
                             }
                         },
